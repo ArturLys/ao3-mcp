@@ -187,6 +187,14 @@ async def search_works(
             `expected_number_of_chapters: 1` (one-shots only);
             `series.title: *` (part of a series); `language_id: en`.
             Also supports `*` wildcards, e.g. `*coffee shop*`.
+            ⚠️ query is a FULL-TEXT match on the fic body, AND'd with every
+            other filter — so it narrows HARD. Do NOT stuff mood/concept
+            synonyms here ("nuzzle OR forehead kiss OR won't let go"): that
+            demands the prose literally contain one of those strings on top of
+            your tag/fandom filters, and routinely collapses a healthy 60-result
+            search to 0. Concepts belong in `tags` (wildcarded), not here. Use
+            query for author names, quoted title/summary phrases, or the numeric
+            operators above — leave it EMPTY when a tag already covers the vibe.
         title: words in the work title.
         author: author/creator name.
         fandom: fandom name, e.g. "Naruto" (comma-separate several). Exact

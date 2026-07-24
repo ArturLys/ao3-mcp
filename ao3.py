@@ -55,6 +55,12 @@ SORT_COLUMNS = {
 
 MAX_PAGES = 5
 
+# Transient failures worth one retry. 52x are Cloudflare<->origin errors
+# (525 = SSL handshake failed, 522/524 = origin timeout) — AO3 under load, not us.
+RETRYABLE_STATUS = {429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 525}
+RETRY_WAIT = 5.0      # seconds between the two attempts
+MAX_ATTEMPTS = 2      # try, wait 5s, try once more, then give up
+
 
 def _num(text: str) -> int:
     try:
@@ -65,7 +71,7 @@ def _num(text: str) -> int:
 
 class AO3Client:
     def __init__(self, min_interval: float = 0.6):
-        self._client = AsyncSession(impersonate=IMPERSONATE, timeout=90)
+        self._client = AsyncSession(impersonate=IMPERSONATE, timeout=30)
         self._lock = asyncio.Lock()
         self._last_request = 0.0
         self.min_interval = min_interval
@@ -74,10 +80,14 @@ class AO3Client:
         await self._client.close()
 
     async def _get(self, url: str, params: dict | list | None = None) -> str:
-        """Serialized, throttled GET; retries once on 429 (honoring Retry-After)
-        and once on timeout (AO3 gets slow under load)."""
-        last_exc: Exception | None = None
-        for attempt in (1, 2):
+        """Serialized, throttled GET. Retries ONCE (5s gap) on a transient
+        failure — network/timeout error, 429, or a 5xx incl. Cloudflare 52x
+        (525 SSL handshake, 522/524 origin timeout) — then gives up rather than
+        hanging. A Cloudflare bot-challenge (403) is NOT retried: it needs a
+        fingerprint change, not a wait."""
+        last_error = "unknown error"
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            resp = None
             async with self._lock:
                 wait = self._last_request + self.min_interval - time.monotonic()
                 if wait > 0:
@@ -85,25 +95,34 @@ class AO3Client:
                 try:
                     resp = await self._client.get(url, params=params)
                 except Exception as exc:  # curl timeout / transient network error
-                    self._last_request = time.monotonic()
-                    last_exc = exc
-                    if attempt == 1:
-                        await asyncio.sleep(5)
-                        continue
-                    raise
+                    last_error = f"network/timeout error ({type(exc).__name__})"
                 self._last_request = time.monotonic()
-            if resp.status_code == 429 and attempt == 1:
-                retry_after = min(int(resp.headers.get("retry-after", "60") or "60"), 300)
-                await asyncio.sleep(retry_after)
-                continue
+
+            if resp is None:
+                if attempt < MAX_ATTEMPTS:
+                    await asyncio.sleep(RETRY_WAIT)
+                    continue
+                raise RuntimeError(f"AO3 unreachable after {MAX_ATTEMPTS} tries: {last_error}")
+
             if resp.status_code == 403 and resp.headers.get("cf-mitigated") == "challenge":
                 raise RuntimeError(
                     "Cloudflare challenged this request — AO3 tightened bot rules. "
                     f"Try changing IMPERSONATE (currently {IMPERSONATE!r}) in ao3.py."
                 )
+
+            if resp.status_code in RETRYABLE_STATUS:
+                last_error = f"HTTP {resp.status_code} from AO3/Cloudflare"
+                if attempt < MAX_ATTEMPTS:
+                    wait_s = RETRY_WAIT
+                    if resp.status_code == 429:  # honor Retry-After, but stay snappy
+                        wait_s = min(int(resp.headers.get("retry-after", "5") or "5"), 60)
+                    await asyncio.sleep(wait_s)
+                    continue
+                raise RuntimeError(f"AO3 request failed after {MAX_ATTEMPTS} tries: {last_error}")
+
             resp.raise_for_status()
             return resp.text
-        raise last_exc or RuntimeError("unreachable")
+        raise RuntimeError(f"AO3 request failed: {last_error}")
 
     # ------------------------------------------------------------- search
 
