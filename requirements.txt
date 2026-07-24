@@ -1,0 +1,4 @@
+mcp
+curl_cffi
+beautifulsoup4
+google-genai

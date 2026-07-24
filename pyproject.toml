@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ao3-mcp"
+version = "0.1.0"
+description = "Search AO3 and have fics read by a secondary model before they're recommended"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Artur Lys" }]
+keywords = ["mcp", "mcp-server", "ao3", "archive-of-our-own", "fanfiction", "claude", "gemini"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "mcp",
+    "curl_cffi",
+    "beautifulsoup4",
+    "google-genai",
+]
+
+[project.urls]
+Homepage = "https://github.com/ArturLys/ao3-mcp"
+Repository = "https://github.com/ArturLys/ao3-mcp"
+
+[project.scripts]
+ao3-mcp = "server:main"
+
+[tool.setuptools]
+py-modules = ["server", "ao3", "reader"]
