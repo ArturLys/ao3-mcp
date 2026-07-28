@@ -1,4 +1,4 @@
-mcp
+mcp>=1.2,<2
 curl_cffi
 beautifulsoup4
 google-genai
