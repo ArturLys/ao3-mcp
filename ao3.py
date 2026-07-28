@@ -13,6 +13,7 @@ try a different `IMPERSONATE` target.
 
 import asyncio
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -22,7 +23,19 @@ from curl_cffi.requests import AsyncSession
 
 BASE = "https://archiveofourown.org"
 IMPERSONATE = "safari_ios"
-CACHE_DIR = Path(__file__).parent / ".cache"
+
+
+def _default_cache_dir() -> Path:
+    """Per-user cache dir. NOT next to the code — a pip install puts this module
+    in site-packages, which may be read-only and shouldn't accumulate data."""
+    if os.name == "nt":
+        base = os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local"
+    else:
+        base = os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache"
+    return Path(base) / "ao3-mcp"
+
+
+CACHE_DIR = _default_cache_dir()
 CACHE_TTL = 24 * 3600  # fic text barely changes; WIP updates show up next day
 
 RATING_IDS = {
@@ -60,6 +73,15 @@ MAX_PAGES = 5
 RETRYABLE_STATUS = {429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 525}
 RETRY_WAIT = 5.0      # seconds between the two attempts
 MAX_ATTEMPTS = 2      # try, wait 5s, try once more, then give up
+
+
+def _check_id(work_id: str) -> str:
+    """Work ids are numeric; anything else means a mangled input — reject it
+    before it gets interpolated into an AO3 URL."""
+    work_id = str(work_id).strip()
+    if not work_id.isdigit():
+        raise ValueError(f"work_id must be a numeric AO3 id, got {work_id!r}")
+    return work_id
 
 
 def _num(text: str) -> int:
@@ -269,6 +291,7 @@ class AO3Client:
     # --------------------------------------------------------------- work
 
     async def work_meta(self, work_id: str) -> dict:
+        work_id = _check_id(work_id)
         html = await self._get(f"{BASE}/works/{work_id}", params={"view_adult": "true"})
         soup = BeautifulSoup(html, "html.parser")
 
@@ -314,6 +337,7 @@ class AO3Client:
         Results are cached on disk for CACHE_TTL so repeat reads (new query,
         same fic) skip AO3 entirely.
         """
+        work_id = _check_id(work_id)
         cache_file = CACHE_DIR / f"{work_id}.json"
         if cache_file.exists() and time.time() - cache_file.stat().st_mtime < CACHE_TTL:
             try:
@@ -359,7 +383,7 @@ class AO3Client:
             "char_count": len(full_text),
         }
         try:
-            CACHE_DIR.mkdir(exist_ok=True)
+            CACHE_DIR.mkdir(parents=True, exist_ok=True)
             cache_file.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
         except OSError:
             pass  # cache is best-effort

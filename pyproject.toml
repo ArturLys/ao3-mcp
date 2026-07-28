@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ao3-mcp"
-version = "0.1.1"
+version = "0.1.2"
 description = "Search AO3 and have fics read by a secondary model before they're recommended"
 readme = "README.md"
 requires-python = ">=3.10"

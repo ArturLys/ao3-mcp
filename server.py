@@ -21,8 +21,14 @@ import json
 import os
 import re
 import sys
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
 
 from mcp.server.fastmcp import FastMCP
+
+try:
+    __version__ = _pkg_version("ao3-mcp")
+except PackageNotFoundError:  # running from a source checkout, not installed
+    __version__ = "0.0.0-dev"
 
 from ao3 import AO3Client, MAX_PAGES
 from reader import MAX_BATCH_CHARS, MAX_FIC_CHARS, FicReader
@@ -32,6 +38,7 @@ def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog="ao3-mcp", description="AO3 (Archive of Our Own) MCP server."
     )
+    p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     p.add_argument(
         "--api-key", default=os.environ.get("GEMINI_API_KEY"),
         help="Gemini API key. Free one at https://aistudio.google.com/api-keys. "

@@ -2,8 +2,12 @@
 
 <!-- mcp-name: io.github.ArturLys/ao3-mcp -->
 
+[![PyPI](https://img.shields.io/pypi/v/ao3-mcp)](https://pypi.org/project/ao3-mcp/)
+[![CI](https://github.com/ArturLys/ao3-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ArturLys/ao3-mcp/actions/workflows/ci.yml)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
+
+[![ao3-mcp MCP server](https://glama.ai/mcp/servers/ArturLys/ao3-mcp/badges/score.svg)](https://glama.ai/mcp/servers/ArturLys/ao3-mcp)
 
 An [MCP](https://modelcontextprotocol.io/) (Model Context Protocol) server that connects AI agents — Claude, Cursor, or any MCP client — to the [Archive of Our Own](https://archiveofourown.org/). Search AO3 fanfiction with full filters, resolve fuzzy wording to canonical tags, and get fics *actually read* before they're recommended.
 
@@ -19,6 +23,17 @@ agent ──MCP──> server.py
 ## Why this beats blurb-based recommendations
 
 An AO3 blurb is an ad written by the author. This server's workflow is: search wide (40–60 results), have the reader model read the shortlist — up to 20 full fics in one call — and recommend only what was actually read, with verbatim prose samples so quality is judged from the text itself.
+
+## Not just for finding your next read
+
+If you write with an AI — fanfic, original fiction, roleplay — this doubles as an inspiration engine. Mid-scene, your agent can pull up how real fic authors handle the exact beat you're on:
+
+```
+Find three highly-kudosed fics where rivals are forced to share a bed, read them,
+and tell me how each one builds the tension — pacing, POV, what they leave unsaid.
+```
+
+The reader reports back with structure, style notes, and verbatim prose samples, so the model gets grounded in how the trope is actually written — not what it imagines fanfic sounds like. Works the same for roleplay: pull reports on fics that nail a character's voice and feed them in as style reference.
 
 ## Install
 
